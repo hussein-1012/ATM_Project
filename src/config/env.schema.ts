@@ -36,6 +36,7 @@ export const envSchema = z.object({
 
   ROUTING_PROVIDER: z.enum(['osrm', 'ors', 'fallback']).default('fallback'),
   OSRM_URL: z.string().default('https://router.project-osrm.org'),
+  ORS_URL: z.string().default('https://api.openrouteservice.org'),
   ORS_API_KEY: z.string().optional().default(''),
   ROUTE_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
   ROUTING_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),

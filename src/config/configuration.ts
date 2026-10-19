@@ -41,6 +41,7 @@ export default () => ({
   routing: {
     provider: process.env.ROUTING_PROVIDER ?? 'fallback',
     osrmUrl: process.env.OSRM_URL ?? 'https://router.project-osrm.org',
+    orsUrl: process.env.ORS_URL ?? 'https://api.openrouteservice.org',
     orsApiKey: process.env.ORS_API_KEY ?? '',
     cacheTtlSeconds: parseInt(process.env.ROUTE_CACHE_TTL_SECONDS ?? '60', 10),
     timeoutMs: parseInt(process.env.ROUTING_TIMEOUT_MS ?? '5000', 10),

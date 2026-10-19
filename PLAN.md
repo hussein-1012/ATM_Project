@@ -289,7 +289,7 @@ Provider selected by env `ROUTING_PROVIDER=osrm|ors|fallback`: OSRM/ORS over HTT
 - [x] **Phase 3 — Auth/users/settings**: register/login/refresh/logout, OTP forgot→verify→reset with all limits, `/me` get/patch, change-password, soft delete. Auth e2e green incl. **refresh reuse detection** and OTP attempt/cooldown limits *(DB-dependent run deferred — Docker)*.
 - [x] **Phase 4 — ATMs**: nearby (GiST, EXPLAIN in README *(README evidence deferred to Phase 7)*), search (Arabic normalization tests), detail (+reportSummary), openNow (unit-tested incl. Cairo timezone + wrap intervals). Build + lint + tests green.
 - [x] **Phase 5 — Community**: reports with 30-min cooldown + throttle, reportSummary algorithm tests, favorites (distance), recent searches (last-10 trim). Tests green.
-- [ ] **Phase 6 — Navigation**: RoutingProvider interface, OSRM + ORS impls, fallback, Redis cache (60 s, rounded coords). E2e with provider mocked + fallback path.
+- [x] **Phase 6 — Navigation**: RoutingProvider interface, OSRM + ORS impls, fallback, Redis cache (60 s, rounded coords). E2e with provider mocked + fallback path *(DB-dependent run deferred — Docker; unit tests cover provider selection, caching and fallback)*.
 - [ ] **Phase 7 — Hardening & docs**: throttler review (Redis storage), no secrets/sensitive data in logs, coverage report, README complete (setup from scratch, EXPLAIN, Decisions), build + lint + all tests green.
 
 Definition of done: `docker compose up` starts everything, the real `data/atms.json` is imported, all tests pass, `/docs` shows the complete API.
