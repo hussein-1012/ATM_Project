@@ -104,6 +104,17 @@ export class AtmsService {
     return { ...this.toDto(row, now), reportSummary };
   }
 
+  exists(id: string): Promise<boolean> {
+    return this.repo.exists(id);
+  }
+
+  /** Hydrate a set of ATMs (favorites), preserving nothing about input order. */
+  async findManyByIds(ids: string[], ref?: { lat: number; lng: number }): Promise<AtmResponseDto[]> {
+    const rows = await this.repo.findManyByIds(ids, ref);
+    const now = new Date();
+    return rows.map((row) => this.toDto(row, now));
+  }
+
   private toDto(row: AtmRow, now: Date): AtmResponseDto {
     const dto: AtmResponseDto = {
       id: row.id,

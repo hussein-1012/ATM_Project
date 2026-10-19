@@ -86,6 +86,28 @@ export class AtmsRepository {
     return rows[0] ?? null;
   }
 
+  async exists(id: string): Promise<boolean> {
+    const rows: Array<{ one: number }> = await this.dataSource.query(
+      'SELECT 1 AS "one" FROM "atms" a WHERE a."id" = $1 LIMIT 1',
+      [id],
+    );
+    return rows.length > 0;
+  }
+
+  /** Load a set of ATMs by id (favorites), optionally with distance from a reference point. */
+  async findManyByIds(ids: string[], ref?: { lat: number; lng: number }): Promise<AtmRow[]> {
+    if (ids.length === 0) return [];
+    const distanceSelect = ref
+      ? `, ST_Distance(a."location", ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography) AS "distanceMeters"`
+      : '';
+    const params: unknown[] = [ids];
+    if (ref) params.push(ref.lng, ref.lat);
+    return this.dataSource.query(
+      `SELECT ${this.baseSelect()}${distanceSelect} FROM "atms" a WHERE a."id" = ANY($1::uuid[])`,
+      params,
+    );
+  }
+
   async searchCount(whereSql: string, values: unknown[]): Promise<number> {
     const where = whereSql.trim() ? whereSql : 'TRUE';
     const rows: Array<{ count: number }> = await this.dataSource.query(
