@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.git
+.env
+*.log
+data/*.json
+!data/atms.json
+test
+.vscode
+.idea
