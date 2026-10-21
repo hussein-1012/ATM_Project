@@ -1,45 +1,47 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { RecentSearch } from './entities/recent-search.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { RecentSearch, type RecentSearchDocument } from './entities/recent-search.entity';
 import { RECENT_SEARCHES_KEEP } from '../../common/constants';
 
 @Injectable()
 export class RecentSearchesService {
   constructor(
-    @InjectRepository(RecentSearch)
-    private readonly searches: Repository<RecentSearch>,
+    @InjectModel(RecentSearch.name)
+    private readonly searchModel: Model<RecentSearch>,
   ) {}
 
-  async list(userId: string): Promise<RecentSearch[]> {
-    return this.searches.find({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-      take: RECENT_SEARCHES_KEEP,
-    });
+  async list(userId: string): Promise<RecentSearchDocument[]> {
+    return this.searchModel
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .limit(RECENT_SEARCHES_KEEP)
+      .exec();
   }
 
   /** Dedupe by query (moves an existing query back to the top), then trim to the last 10. */
-  async add(userId: string, query: string): Promise<RecentSearch> {
+  async add(userId: string, query: string): Promise<RecentSearchDocument> {
     const trimmed = query.trim();
-    await this.searches.delete({ userId, query: trimmed });
+    const uid = new Types.ObjectId(userId);
 
-    const entity = this.searches.create({ userId, query: trimmed });
-    const saved = await this.searches.save(entity);
+    await this.searchModel.deleteMany({ userId: uid, query: trimmed });
 
-    const stale = await this.searches.find({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-      skip: RECENT_SEARCHES_KEEP,
-      select: ['id'],
-    });
+    const saved = await this.searchModel.create({ userId: uid, query: trimmed });
+
+    // Trim to keep only the latest N entries
+    const stale = await this.searchModel
+      .find({ userId: uid })
+      .sort({ createdAt: -1 })
+      .skip(RECENT_SEARCHES_KEEP)
+      .select('_id')
+      .exec();
     if (stale.length) {
-      await this.searches.delete(stale.map((s) => s.id));
+      await this.searchModel.deleteMany({ _id: { $in: stale.map((s) => s._id) } });
     }
     return saved;
   }
 
   async clear(userId: string): Promise<void> {
-    await this.searches.delete({ userId });
+    await this.searchModel.deleteMany({ userId: new Types.ObjectId(userId) });
   }
 }

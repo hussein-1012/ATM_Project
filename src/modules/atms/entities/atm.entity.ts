@@ -1,12 +1,8 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
 import { AtmBank } from './atm-bank.enum';
+
+export type AtmDocument = HydratedDocument<Atm>;
 
 export interface OpeningHoursInterval {
   open: string; // "HH:MM" local (Africa/Cairo)
@@ -26,63 +22,71 @@ export interface GeoPoint {
 }
 
 /**
- * ATM / bank machine. `location` is a PostGIS geography(Point, 4326) and is
- * never hydrated directly (select: false) — geo reads go through explicit
- * ST_X/ST_Y projections in AtmsRepository.
+ * ATM / bank machine. `location` is a GeoJSON Point with a 2dsphere index
+ * for geo queries ($nearSphere, $geoNear).
  *
  * Not stored by design: phone, rating, reviews, photos, plus codes.
  */
-@Entity('atms')
-@Index('ux_atms_source_source_id', ['source', 'sourceId'], { unique: true })
+@Schema({
+  timestamps: true,
+  collection: 'atms',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class Atm {
-  @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Prop({ required: true, maxlength: 255 })
   name!: string;
 
-  @Column({ type: 'enum', enum: AtmBank, default: AtmBank.OTHER })
+  @Prop({ type: String, enum: Object.values(AtmBank), default: AtmBank.OTHER })
   bank!: AtmBank;
 
-  @Column({ type: 'text', default: '' })
+  @Prop({ default: '' })
   address!: string;
 
-  @Column({
-    type: 'geography',
-    spatialFeatureType: 'Point',
-    srid: 4326,
-    select: false,
+  @Prop({
+    type: { type: String, enum: ['Point'], required: true },
+    coordinates: { type: [Number], required: true },
   })
   location!: GeoPoint;
 
-  @Column({ type: 'boolean', default: false })
+  @Prop({ default: false })
   isBranch!: boolean;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Prop({ type: Object, default: null })
   openingHours!: OpeningHours | null;
 
-  @Column({ type: 'boolean', nullable: true })
+  @Prop({ type: Boolean, default: null })
   is24h!: boolean | null;
 
-  @Column({ type: 'boolean', nullable: true })
+  @Prop({ type: Boolean, default: null })
   wheelchairAccessible!: boolean | null;
 
-  @Column({ type: 'varchar', length: 64 })
+  @Prop({ required: true, maxlength: 64 })
   source!: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Prop({ required: true, maxlength: 255 })
   sourceId!: string;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Prop({ type: Date, default: null })
   sourceFetchedAt!: Date | null;
 
-  /** Normalized name + address + bank label; trigram-indexed search target. */
-  @Column({ type: 'text', default: '' })
+  /** Normalized name + address + bank label; used for text search. */
+  @Prop({ default: '' })
   searchText!: string;
 
-  @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
 }
+
+export const AtmSchema = SchemaFactory.createForClass(Atm);
+
+// Geospatial index for nearby queries
+AtmSchema.index({ location: '2dsphere' });
+
+// Unique upsert key for the importer
+AtmSchema.index({ source: 1, sourceId: 1 }, { unique: true });
+
+// Case-insensitive text search on the searchText blob
+AtmSchema.index({ searchText: 'text' });

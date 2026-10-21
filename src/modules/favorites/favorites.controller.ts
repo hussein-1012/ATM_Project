@@ -4,7 +4,6 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseUUIDPipe,
   Put,
   Query,
 } from '@nestjs/common';
@@ -17,14 +16,13 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { ParseObjectIdPipe } from '../../common/pipes/parse-object-id.pipe';
 import {
   FavoriteListDto,
   FavoriteListQueryDto,
   FavoriteResponseDto,
 } from './dto/favorite.dto';
 import { FavoritesService } from './favorites.service';
-
-const uuid = () => new ParseUUIDPipe({ version: '4' });
 
 @ApiTags('favorites')
 @ApiBearerAuth('bearer')
@@ -47,7 +45,7 @@ export class FavoritesController {
   @ApiNotFoundResponse({ description: 'ATM_NOT_FOUND' })
   async add(
     @CurrentUser() user: AuthUser,
-    @Param('atmId', uuid()) atmId: string,
+    @Param('atmId', new ParseObjectIdPipe()) atmId: string,
   ): Promise<FavoriteResponseDto> {
     const favorite = await this.favorites.add(user.id, atmId);
     return { favorite: { atmId: favorite.atmId, createdAt: favorite.createdAt } };
@@ -59,7 +57,7 @@ export class FavoritesController {
   @ApiNoContentResponse()
   async remove(
     @CurrentUser() user: AuthUser,
-    @Param('atmId', uuid()) atmId: string,
+    @Param('atmId', new ParseObjectIdPipe()) atmId: string,
   ): Promise<void> {
     await this.favorites.remove(user.id, atmId);
   }

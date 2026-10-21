@@ -22,48 +22,31 @@ describe('SearchService', () => {
     });
   });
 
-  describe('likePattern', () => {
-    it('wraps the normalized query in wildcards', () => {
-      expect(service.likePattern('بنك')).toBe('%بنك%');
-    });
-
-    it('escapes LIKE metacharacters so they match literally', () => {
-      expect(service.likePattern('50%_off\\')).toBe('%50\\%\\_off\\\\%');
-    });
-  });
-
   describe('build', () => {
-    it('is an empty filter when nothing is provided', () => {
-      expect(service.build({})).toEqual({ whereSql: '', values: [], distanceSql: null });
+    it('returns an empty filter object when nothing is provided', () => {
+      const built = service.build({});
+      expect(built).toEqual({
+        q: undefined,
+        bank: undefined,
+        wheelchair: undefined,
+        maxDistance: undefined,
+        lat: undefined,
+        lng: undefined,
+      });
     });
 
-    it('builds an ILIKE clause with an escaped pattern for q', () => {
+    it('passes through q filter', () => {
       const built = service.build({ q: 'بنك مصر' });
-      expect(built.whereSql).toBe(`a."searchText" ILIKE $1 ESCAPE '\\'`);
-      expect(built.values).toEqual(['%بنك مصر%']);
-      expect(built.distanceSql).toBeNull();
+      expect(built.q).toBe('بنك مصر');
     });
 
-    it('ignores a whitespace-only q', () => {
-      expect(service.build({ q: '   ' }).whereSql).toBe('');
-    });
-
-    it('binds a location as lng then lat and exposes a distance expression', () => {
-      const built = service.build({ lat: 29.3, lng: 30.8 });
-      expect(built.values).toEqual([30.8, 29.3]);
-      expect(built.distanceSql).toBe(
-        'ST_Distance(a."location", ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)',
-      );
-      expect(built.whereSql).toBe('');
-    });
-
-    it('binds bank and wheelchair filters', () => {
+    it('passes through bank and wheelchair filters', () => {
       const built = service.build({ bank: AtmBank.NBE, wheelchair: true });
-      expect(built.values).toEqual([AtmBank.NBE]);
-      expect(built.whereSql).toBe(`a."bank" = $1 AND a."wheelchairAccessible" IS TRUE`);
+      expect(built.bank).toBe(AtmBank.NBE);
+      expect(built.wheelchair).toBe(true);
     });
 
-    it('keeps placeholder order consistent across all filters', () => {
+    it('passes through location and maxDistance', () => {
       const built = service.build({
         q: 'بنك',
         bank: AtmBank.NBE,
@@ -72,13 +55,11 @@ describe('SearchService', () => {
         lng: 30.8,
         maxDistance: 5000,
       });
-      expect(built.values).toEqual([30.8, 29.3, '%بنك%', AtmBank.NBE, 5000]);
-      expect(built.whereSql).toBe(
-        `a."searchText" ILIKE $3 ESCAPE '\\' AND a."bank" = $4 AND a."wheelchairAccessible" IS TRUE AND ST_DWithin(a."location", ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $5)`,
-      );
-      expect(built.distanceSql).toBe(
-        'ST_Distance(a."location", ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)',
-      );
+      expect(built.lat).toBe(29.3);
+      expect(built.lng).toBe(30.8);
+      expect(built.maxDistance).toBe(5000);
+      expect(built.bank).toBe(AtmBank.NBE);
+      expect(built.q).toBe('بنك');
     });
 
     it('rejects maxDistance without a reference location', () => {

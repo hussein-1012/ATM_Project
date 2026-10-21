@@ -4,7 +4,7 @@ x-app-env: &app-env
   NODE_ENV: ${NODE_ENV:-development}
   PORT: ${PORT:-3000}
   LOG_LEVEL: ${LOG_LEVEL:-info}
-  DATABASE_URL: postgres://aqrab:${POSTGRES_PASSWORD:-aqrab}@postgres:5432/${POSTGRES_DB:-aqrab}
+  MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/aqrab}
   REDIS_URL: redis://redis:6379
   JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me-32chars-min}
   JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
@@ -30,18 +30,14 @@ x-app-env: &app-env
   IMPORT_DEFAULT_FILE: data/atms.json
 
 services:
-  postgres:
-    image: postgis/postgis:16-3.4
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-aqrab}
-      POSTGRES_USER: ${POSTGRES_USER:-aqrab}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aqrab}
+  mongo:
+    image: mongo:7
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongodata:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aqrab} -d ${POSTGRES_DB:-aqrab}"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -56,17 +52,16 @@ services:
       timeout: 3s
       retries: 12
 
-  # One-shot: runs migrations then the idempotent ATM import, then exits.
-  # `depends_on: condition: service_completed_successfully` gates the api on it.
+  # One-shot: runs the idempotent ATM import, then exits.
   importer:
     build: .
-    command: ["sh", "-c", "node dist/database/migrate.js && node dist/modules/importer/run-import.js --file data/atms.json"]
+    command: ["sh", "-c", "node dist/modules/importer/run-import.js --file data/atms.json"]
     environment:
       <<: *app-env
     volumes:
       - ./data:/app/data:ro
     depends_on:
-      postgres:
+      mongo:
         condition: service_healthy
     restart: "no"
 
@@ -77,7 +72,7 @@ services:
     environment:
       <<: *app-env
     depends_on:
-      postgres:
+      mongo:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -86,4 +81,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
+  mongodata:

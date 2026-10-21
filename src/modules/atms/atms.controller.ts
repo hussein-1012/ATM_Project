@@ -1,6 +1,7 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
+import { ParseObjectIdPipe } from '../../common/pipes/parse-object-id.pipe';
 import { AtmsService } from './atms.service';
 import { AtmDetailQueryDto, NearbyQueryDto, SearchQueryDto } from './dto/atm-query.dto';
 import {
@@ -22,7 +23,7 @@ export class AtmsController {
   @Get('nearby')
   @ApiOperation({
     summary: 'ATMs near a coordinate, nearest first',
-    description: 'Uses the PostGIS GiST index (ST_DWithin filter + KNN ordering).',
+    description: 'Uses the MongoDB 2dsphere index ($geoNear).',
   })
   @ApiOkResponse({ type: NearbyResponseDto })
   nearby(@Query() dto: NearbyQueryDto): Promise<NearbyResponseDto> {
@@ -34,7 +35,7 @@ export class AtmsController {
   @ApiOperation({
     summary: 'Search ATMs by text / bank / accessibility',
     description:
-      'The query is Arabic-normalized (hamza, taa-marbuta, diacritics, case) and matched against a trigram-indexed blob.',
+      'The query is Arabic-normalized (hamza, taa-marbuta, diacritics, case) and matched against a text-indexed blob.',
   })
   @ApiOkResponse({ type: SearchResponseDto })
   search(@Query() dto: SearchQueryDto): Promise<SearchResponseDto> {
@@ -49,7 +50,7 @@ export class AtmsController {
   })
   @ApiOkResponse({ type: AtmDetailResponseDto })
   detail(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', new ParseObjectIdPipe()) id: string,
     @Query() dto: AtmDetailQueryDto,
   ): Promise<AtmDetailResponseDto> {
     const ref = dto.lat !== undefined && dto.lng !== undefined ? { lat: dto.lat, lng: dto.lng } : undefined;

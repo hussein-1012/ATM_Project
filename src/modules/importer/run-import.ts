@@ -1,7 +1,10 @@
 import 'reflect-metadata';
 import { resolve } from 'node:path';
-import { AppDataSource } from '../../database/data-source';
+import * as dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { AtmImportService, type ImportSummary } from './import.service';
+
+dotenv.config({ quiet: true });
 
 /**
  * Standalone importer entry point (no Nest DI needed):
@@ -65,16 +68,21 @@ async function main(): Promise<void> {
     return;
   }
 
-  await AppDataSource.initialize();
+  const mongoUri = process.env.MONGO_URI;
+  if (!mongoUri) {
+    throw new Error('MONGO_URI environment variable is required');
+  }
+
+  await mongoose.connect(mongoUri);
   try {
-    const service = new AtmImportService(AppDataSource);
+    const service = new AtmImportService(mongoose.connection);
     const summary = await service.importFile(file, {
       dryRun: false,
       source: args.source,
     });
     printSummary(summary);
   } finally {
-    await AppDataSource.destroy();
+    await mongoose.disconnect();
   }
 }
 

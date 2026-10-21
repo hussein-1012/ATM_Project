@@ -1,18 +1,28 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+
+export type RecentSearchDocument = HydratedDocument<RecentSearch>;
 
 /** Only the last 10 rows per user are kept (trimmed on insert). */
-@Entity('recent_searches')
-@Index('ix_recent_searches_user_created', ['userId', 'createdAt'])
+@Schema({
+  timestamps: true,
+  collection: 'recent_searches',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class RecentSearch {
-  @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'uuid' })
-  userId!: string;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'User', index: true })
+  userId!: Types.ObjectId;
 
-  @Column({ type: 'varchar', length: 120 })
+  @Prop({ required: true, maxlength: 120 })
   query!: string;
 
-  @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
+  updatedAt!: Date;
 }
+
+export const RecentSearchSchema = SchemaFactory.createForClass(RecentSearch);
+
+RecentSearchSchema.index({ userId: 1, createdAt: -1 });

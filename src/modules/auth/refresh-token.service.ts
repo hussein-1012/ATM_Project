@@ -1,14 +1,14 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { RefreshToken } from './entities/refresh-token.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { RefreshToken, type RefreshTokenDocument } from './entities/refresh-token.entity';
 import { parseDurationMs } from '../../common/utils/duration.util';
 
 export interface IssuedRefreshToken {
   token: string;
-  entity: RefreshToken;
+  entity: RefreshTokenDocument;
 }
 
 /**
@@ -18,8 +18,8 @@ export interface IssuedRefreshToken {
 @Injectable()
 export class RefreshTokenService {
   constructor(
-    @InjectRepository(RefreshToken)
-    private readonly tokens: Repository<RefreshToken>,
+    @InjectModel(RefreshToken.name)
+    private readonly tokenModel: Model<RefreshToken>,
     private readonly config: ConfigService,
   ) {}
 
@@ -34,7 +34,7 @@ export class RefreshTokenService {
 
   async issue(userId: string, deviceInfo?: string, familyId?: string): Promise<IssuedRefreshToken> {
     const token = randomBytes(48).toString('base64url');
-    const entity = this.tokens.create({
+    const entity = await this.tokenModel.create({
       userId,
       tokenHash: this.hash(token),
       familyId: familyId ?? randomUUID(),
@@ -42,7 +42,6 @@ export class RefreshTokenService {
       revokedAt: null,
       deviceInfo: deviceInfo?.slice(0, 255) ?? null,
     });
-    await this.tokens.save(entity);
     return { token, entity };
   }
 
@@ -51,7 +50,7 @@ export class RefreshTokenService {
    * tokens; on reuse it revokes the entire family before throwing.
    */
   async rotate(rawToken: string): Promise<IssuedRefreshToken & { userId: string }> {
-    const found = await this.tokens.findOne({ where: { tokenHash: this.hash(rawToken) } });
+    const found = await this.tokenModel.findOne({ tokenHash: this.hash(rawToken) }).exec();
     if (!found) {
       throw new UnauthorizedException({
         message: 'Invalid refresh token',
@@ -76,35 +75,32 @@ export class RefreshTokenService {
     }
 
     found.revokedAt = new Date();
-    await this.tokens.save(found);
+    await found.save();
 
-    const issued = await this.issue(found.userId, found.deviceInfo ?? undefined, found.familyId);
-    return { ...issued, userId: found.userId };
+    const userId = found.userId.toString();
+    const issued = await this.issue(userId, found.deviceInfo ?? undefined, found.familyId);
+    return { ...issued, userId };
   }
 
   async revoke(rawToken: string): Promise<void> {
-    const found = await this.tokens.findOne({ where: { tokenHash: this.hash(rawToken) } });
+    const found = await this.tokenModel.findOne({ tokenHash: this.hash(rawToken) }).exec();
     if (found && !found.revokedAt) {
       found.revokedAt = new Date();
-      await this.tokens.save(found);
+      await found.save();
     }
   }
 
   async revokeAllForUser(userId: string): Promise<void> {
-    await this.tokens
-      .createQueryBuilder()
-      .update(RefreshToken)
-      .set({ revokedAt: new Date() })
-      .where('"userId" = :userId AND "revokedAt" IS NULL', { userId })
-      .execute();
+    await this.tokenModel.updateMany(
+      { userId, revokedAt: null },
+      { $set: { revokedAt: new Date() } },
+    );
   }
 
   async revokeFamily(familyId: string): Promise<void> {
-    await this.tokens
-      .createQueryBuilder()
-      .update(RefreshToken)
-      .set({ revokedAt: new Date() })
-      .where('"familyId" = :familyId AND "revokedAt" IS NULL', { familyId })
-      .execute();
+    await this.tokenModel.updateMany(
+      { familyId, revokedAt: null },
+      { $set: { revokedAt: new Date() } },
+    );
   }
 }

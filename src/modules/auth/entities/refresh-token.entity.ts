@@ -1,32 +1,41 @@
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+
+export type RefreshTokenDocument = HydratedDocument<RefreshToken>;
 
 /**
  * Refresh tokens are opaque random strings; only their sha256 hash is stored.
  * `familyId` groups a rotation chain so token reuse revokes the whole family.
  */
-@Entity('refresh_tokens')
+@Schema({
+  timestamps: true,
+  collection: 'refresh_tokens',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class RefreshToken {
-  @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Index('ix_refresh_tokens_user')
-  @Column({ type: 'uuid' })
-  userId!: string;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'User', index: true })
+  userId!: Types.ObjectId;
 
-  @Index('ux_refresh_tokens_hash', { unique: true })
-  @Column({ type: 'varchar', length: 64, unique: true })
+  @Prop({ required: true, unique: true })
   tokenHash!: string;
 
-  @Index('ix_refresh_tokens_family')
-  @Column({ type: 'uuid' })
+  @Prop({ required: true, index: true })
   familyId!: string;
 
-  @Column({ type: 'timestamptz' })
+  @Prop({ required: true, type: Date })
   expiresAt!: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Prop({ type: Date, default: null })
   revokedAt!: Date | null;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Prop({ maxlength: 255, default: null })
   deviceInfo!: string | null;
+
+  createdAt!: Date;
+  updatedAt!: Date;
 }
+
+export const RefreshTokenSchema = SchemaFactory.createForClass(RefreshToken);

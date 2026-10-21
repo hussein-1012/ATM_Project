@@ -3,7 +3,7 @@ import {
   HealthCheck,
   HealthCheckResult,
   HealthCheckService,
-  TypeOrmHealthIndicator,
+  MongooseHealthIndicator,
 } from '@nestjs/terminus';
 import { Public } from '../../common/decorators/public.decorator';
 import { RedisHealth } from './redis-health.indicator';
@@ -12,7 +12,7 @@ import { RedisHealth } from './redis-health.indicator';
 export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
-    private readonly db: TypeOrmHealthIndicator,
+    private readonly db: MongooseHealthIndicator,
     private readonly redis: RedisHealth,
   ) {}
 

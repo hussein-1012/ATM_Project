@@ -1,4 +1,7 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+
+export type AtmReportDocument = HydratedDocument<AtmReport>;
 
 export enum AtmReportStatus {
   WORKING = 'WORKING',
@@ -7,22 +10,29 @@ export enum AtmReportStatus {
 }
 
 /** Crowd-sourced, never bank-confirmed. */
-@Entity('atm_reports')
-@Index('ix_atm_reports_atm_created', ['atmId', 'createdAt'])
-@Index('ix_atm_reports_user_atm_created', ['userId', 'atmId', 'createdAt'])
+@Schema({
+  timestamps: true,
+  collection: 'atm_reports',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class AtmReport {
-  @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'uuid' })
-  atmId!: string;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Atm', index: true })
+  atmId!: Types.ObjectId;
 
-  @Column({ type: 'uuid' })
-  userId!: string;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'User', index: true })
+  userId!: Types.ObjectId;
 
-  @Column({ type: 'enum', enum: AtmReportStatus })
+  @Prop({ required: true, type: String, enum: Object.values(AtmReportStatus) })
   status!: AtmReportStatus;
 
-  @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
+  updatedAt!: Date;
 }
+
+export const AtmReportSchema = SchemaFactory.createForClass(AtmReport);
+
+AtmReportSchema.index({ atmId: 1, createdAt: -1 });
+AtmReportSchema.index({ userId: 1, atmId: 1, createdAt: -1 });

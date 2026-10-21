@@ -5,7 +5,7 @@
 export default () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: parseInt(process.env.PORT ?? '3000', 10),
-  databaseUrl: process.env.DATABASE_URL,
+  mongoUri: process.env.MONGO_URI,
   redisUrl: process.env.REDIS_URL,
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET,

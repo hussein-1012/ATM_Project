@@ -1,43 +1,47 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
+
+export type UserDocument = HydratedDocument<User>;
 
 export enum TravelMode {
   WALK = 'walk',
   DRIVE = 'drive',
 }
 
-@Entity('users')
+@Schema({
+  timestamps: true,
+  collection: 'users',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  /** Mongoose virtual — `_id.toHexString()`. Declared for TypeScript compatibility. */
   id!: string;
 
-  @Column({ type: 'varchar', length: 120 })
+  @Prop({ required: true, maxlength: 120, trim: true })
   name!: string;
 
-  @Index('ux_users_email', { unique: true })
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Prop({ required: true, unique: true, lowercase: true, trim: true, maxlength: 255 })
   email!: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Prop({ required: true })
   passwordHash!: string;
 
-  @Column({ type: 'enum', enum: TravelMode, default: TravelMode.WALK })
+  @Prop({ type: String, enum: Object.values(TravelMode), default: TravelMode.WALK })
   preferredTravelMode!: TravelMode;
 
-  @Column({ type: 'boolean', default: true })
+  @Prop({ default: true })
   voiceGuidance!: boolean;
 
-  @Column({ type: 'varchar', length: 10, default: 'ar' })
+  @Prop({ default: 'ar', maxlength: 10 })
   language!: string;
 
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt!: Date;
-
-  @Column({ type: 'timestamptz', nullable: true })
+  @Prop({ type: Date, default: null })
   deletedAt!: Date | null;
+
+  /** Populated by `timestamps: true`. */
+  createdAt!: Date;
+  updatedAt!: Date;
 }
+
+export const UserSchema = SchemaFactory.createForClass(User);

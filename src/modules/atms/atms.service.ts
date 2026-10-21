@@ -47,7 +47,7 @@ export class AtmsService {
 
   async search(dto: SearchQueryDto): Promise<SearchResponseDto> {
     const now = new Date();
-    const built = this.searchQuery.build({
+    const filters = this.searchQuery.build({
       q: dto.q,
       bank: dto.bank,
       wheelchair: dto.wheelchair,
@@ -57,19 +57,18 @@ export class AtmsService {
     });
 
     if (dto.openNow) {
-      // Exclude unknown hours at the SQL level, then apply the exact
+      // Fetch all candidates with opening hours, then apply the exact
       // open/closed evaluation (Cairo time + wrap intervals) in-process.
-      const clauses = [built.whereSql, '(a."is24h" IS TRUE OR a."openingHours" IS NOT NULL)'].filter(
-        (clause) => clause.trim().length > 0,
-      );
+      const openFilters = { ...filters };
       const candidates = await this.repo.searchRows({
-        whereSql: clauses.join(' AND '),
-        values: built.values,
-        distanceSql: built.distanceSql,
-        limit: null,
+        filters: openFilters,
+        limit: 10000, // fetch all for client-side open/closed filtering
         offset: 0,
       });
-      const open = candidates.filter((row) => this.openNow.status(row, now) === 'OPEN');
+      const withHours = candidates.filter(
+        (row) => row.is24h === true || row.openingHours !== null,
+      );
+      const open = withHours.filter((row) => this.openNow.status(row, now) === 'OPEN');
       const start = (dto.page - 1) * dto.limit;
       return {
         items: open.slice(start, start + dto.limit).map((row) => this.toDto(row, now)),
@@ -78,11 +77,9 @@ export class AtmsService {
     }
 
     const [total, rows] = await Promise.all([
-      this.repo.searchCount(built.whereSql, built.values),
+      this.repo.searchCount(filters),
       this.repo.searchRows({
-        whereSql: built.whereSql,
-        values: built.values,
-        distanceSql: built.distanceSql,
+        filters,
         limit: dto.limit,
         offset: (dto.page - 1) * dto.limit,
       }),

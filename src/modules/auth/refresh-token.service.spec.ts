@@ -1,58 +1,61 @@
 import { randomUUID } from 'node:crypto';
 import { HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Repository } from 'typeorm';
-import { RefreshToken } from './entities/refresh-token.entity';
+import { Model, Types } from 'mongoose';
+import { RefreshToken, type RefreshTokenDocument } from './entities/refresh-token.entity';
 import { RefreshTokenService } from './refresh-token.service';
 
-/** In-memory Repository<RefreshToken> supporting the methods the service uses. */
-class InMemoryRefreshRepo {
-  rows: RefreshToken[] = [];
+/** In-memory Mongoose Model<RefreshToken> supporting the methods the service uses. */
+class InMemoryTokenModel {
+  rows: Array<{
+    _id: Types.ObjectId;
+    id: string;
+    userId: string;
+    tokenHash: string;
+    familyId: string;
+    expiresAt: Date;
+    revokedAt: Date | null;
+    deviceInfo: string | null;
+    save: () => Promise<any>;
+  }> = [];
 
-  create(data: Partial<RefreshToken>): RefreshToken {
-    return { ...(data as RefreshToken) };
-  }
-
-  async save(entity: RefreshToken): Promise<RefreshToken> {
-    if (!entity.id) {
-      entity.id = randomUUID();
-      this.rows.push(entity);
-    }
-    return entity;
-  }
-
-  async findOne(options: { where: { tokenHash: string } }): Promise<RefreshToken | null> {
-    return this.rows.find((row) => row.tokenHash === options.where.tokenHash) ?? null;
-  }
-
-  createQueryBuilder() {
-    let patch: Partial<RefreshToken> = {};
-    let whereClause = '';
-    let params: Record<string, string> = {};
-
-    const qb = {
-      update: () => qb,
-      set: (value: Partial<RefreshToken>) => {
-        patch = value;
-        return qb;
-      },
-      where: (sql: string, parameters: Record<string, string>) => {
-        whereClause = sql;
-        params = parameters ?? {};
-        return qb;
-      },
-      execute: async () => {
-        for (const row of this.rows) {
-          let matches = true;
-          if (params.userId !== undefined) matches = row.userId === params.userId;
-          if (params.familyId !== undefined) matches = row.familyId === params.familyId;
-          if (whereClause.includes('"revokedAt" IS NULL') && row.revokedAt !== null) matches = false;
-          if (matches) Object.assign(row, patch);
-        }
-        return { affected: this.rows.length };
-      },
+  async create(data: Partial<RefreshToken>) {
+    const doc = {
+      _id: new Types.ObjectId(),
+      id: '',
+      userId: data.userId as any,
+      tokenHash: data.tokenHash!,
+      familyId: data.familyId!,
+      expiresAt: data.expiresAt!,
+      revokedAt: data.revokedAt ?? null,
+      deviceInfo: data.deviceInfo ?? null,
+      save: async function () { return this; },
     };
-    return qb;
+    doc.id = doc._id.toHexString();
+    this.rows.push(doc);
+    return doc;
+  }
+
+  findOne(filter: { tokenHash?: string }) {
+    return {
+      exec: async () =>
+        this.rows.find((row) => row.tokenHash === filter.tokenHash) ?? null,
+    };
+  }
+
+  async updateMany(
+    filter: { userId?: string; familyId?: string; revokedAt: null },
+    update: { $set: { revokedAt: Date } },
+  ) {
+    const now = update.$set.revokedAt;
+    for (const row of this.rows) {
+      let matches = true;
+      if (filter.userId !== undefined) matches = row.userId.toString() === filter.userId.toString();
+      if (filter.familyId !== undefined) matches = matches && row.familyId === filter.familyId;
+      if (filter.revokedAt === null && row.revokedAt !== null) matches = false;
+      if (matches) row.revokedAt = now;
+    }
+    return { modifiedCount: this.rows.length };
   }
 }
 
@@ -70,12 +73,12 @@ async function captureError(promise: Promise<unknown>): Promise<HttpException> {
 }
 
 describe('RefreshTokenService', () => {
-  let repo: InMemoryRefreshRepo;
+  let model: InMemoryTokenModel;
   let service: RefreshTokenService;
 
   beforeEach(() => {
-    repo = new InMemoryRefreshRepo();
-    service = new RefreshTokenService(repo as unknown as Repository<RefreshToken>, config);
+    model = new InMemoryTokenModel();
+    service = new RefreshTokenService(model as unknown as Model<RefreshToken>, config);
   });
 
   it('issues an opaque token and stores only its sha256 hash', async () => {
@@ -103,7 +106,7 @@ describe('RefreshTokenService', () => {
     expect(rotated.token).not.toBe(first.token);
     expect(rotated.entity.familyId).toBe(first.entity.familyId);
 
-    const storedFirst = repo.rows.find((row) => row.tokenHash === first.entity.tokenHash)!;
+    const storedFirst = model.rows.find((row) => row.tokenHash === first.entity.tokenHash)!;
     expect(storedFirst.revokedAt).not.toBeNull();
   });
 
@@ -115,7 +118,7 @@ describe('RefreshTokenService', () => {
     expect(error.getResponse()).toMatchObject({ code: 'TOKEN_REUSE_DETECTED' });
 
     // the freshly rotated token is revoked too
-    expect(repo.rows.every((row) => row.revokedAt !== null)).toBe(true);
+    expect(model.rows.every((row) => row.revokedAt !== null)).toBe(true);
     const followUp = await captureError(service.rotate(rotated.token));
     expect(followUp.getResponse()).toMatchObject({ code: 'TOKEN_REUSE_DETECTED' });
   });
@@ -127,11 +130,11 @@ describe('RefreshTokenService', () => {
 
   it('rejects an expired token', async () => {
     const issued = await service.issue('user-1');
-    repo.rows[0].expiresAt = new Date(Date.now() - 1000);
+    model.rows[0].expiresAt = new Date(Date.now() - 1000);
 
     const error = await captureError(service.rotate(issued.token));
     expect(error.getResponse()).toMatchObject({ code: 'REFRESH_TOKEN_EXPIRED' });
-    expect(repo.rows[0].revokedAt).toBeNull();
+    expect(model.rows[0].revokedAt).toBeNull();
   });
 
   it('logout revokes a token and is idempotent', async () => {
@@ -141,7 +144,7 @@ describe('RefreshTokenService', () => {
     await service.revoke(issued.token);
     await service.revoke('unknown-token');
 
-    expect(repo.rows[0].revokedAt).not.toBeNull();
+    expect(model.rows[0].revokedAt).not.toBeNull();
   });
 
   it('revokeAllForUser only touches that user', async () => {
@@ -151,7 +154,7 @@ describe('RefreshTokenService', () => {
 
     await service.revokeAllForUser('user-1');
 
-    expect(repo.rows.filter((row) => row.userId === 'user-1').every((row) => row.revokedAt !== null)).toBe(true);
-    expect(repo.rows.filter((row) => row.userId === 'user-2').every((row) => row.revokedAt === null)).toBe(true);
+    expect(model.rows.filter((row) => row.userId.toString() === 'user-1').every((row) => row.revokedAt !== null)).toBe(true);
+    expect(model.rows.filter((row) => row.userId.toString() === 'user-2').every((row) => row.revokedAt === null)).toBe(true);
   });
 });

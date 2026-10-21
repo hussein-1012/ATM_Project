@@ -1,8 +1,8 @@
 import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThanOrEqual, Repository } from 'typeorm';
-import { AtmReport, AtmReportStatus } from '../atms/entities/atm-report.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { AtmReport, AtmReportStatus, type AtmReportDocument } from '../atms/entities/atm-report.entity';
 import { AtmsService } from '../atms/atms.service';
 
 export class ReportCooldownError extends HttpException {
@@ -20,7 +20,7 @@ export class ReportCooldownError extends HttpException {
 @Injectable()
 export class ReportsService {
   constructor(
-    @InjectRepository(AtmReport) private readonly reports: Repository<AtmReport>,
+    @InjectModel(AtmReport.name) private readonly reportModel: Model<AtmReport>,
     private readonly atms: AtmsService,
     private readonly config: ConfigService,
   ) {}
@@ -30,17 +30,18 @@ export class ReportsService {
   }
 
   /**
-   * One report per user per ATM per cooldown window (default 30 min). The
-   * cooldown check hits the partial (userId, atmId, createdAt) index.
+   * One report per user per ATM per cooldown window (default 30 min).
    */
-  async create(userId: string, atmId: string, status: AtmReportStatus): Promise<AtmReport> {
+  async create(userId: string, atmId: string, status: AtmReportStatus): Promise<AtmReportDocument> {
     await this.assertAtmExists(atmId);
 
     const since = new Date(Date.now() - this.cooldownMs());
-    const recent = await this.reports.findOne({
-      where: { userId, atmId, createdAt: MoreThanOrEqual(since) },
-      order: { createdAt: 'DESC' },
-    });
+    const recent = await this.reportModel.findOne({
+      userId: new Types.ObjectId(userId),
+      atmId: new Types.ObjectId(atmId),
+      createdAt: { $gte: since },
+    }).sort({ createdAt: -1 }).exec();
+
     if (recent) {
       const retryAfterSeconds = Math.max(
         1,
@@ -49,18 +50,21 @@ export class ReportsService {
       throw new ReportCooldownError(retryAfterSeconds);
     }
 
-    const report = this.reports.create({ userId, atmId, status });
-    return this.reports.save(report);
+    return this.reportModel.create({
+      userId: new Types.ObjectId(userId),
+      atmId: new Types.ObjectId(atmId),
+      status,
+    });
   }
 
   /** Recent reports for an ATM, newest first (anonymized by the controller). */
-  async list(atmId: string, limit: number): Promise<AtmReport[]> {
+  async list(atmId: string, limit: number): Promise<AtmReportDocument[]> {
     await this.assertAtmExists(atmId);
-    return this.reports.find({
-      where: { atmId },
-      order: { createdAt: 'DESC' },
-      take: limit,
-    });
+    return this.reportModel
+      .find({ atmId: new Types.ObjectId(atmId) })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
   }
 
   private async assertAtmExists(atmId: string): Promise<void> {

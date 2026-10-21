@@ -5,7 +5,7 @@ import { MAIL_SERVICE, MailService } from './mail.service';
 import { OtpService } from './otp.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { UsersService } from '../users/users.service';
-import type { User } from '../users/entities/user.entity';
+import type { UserDocument } from '../users/entities/user.entity';
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { UserResponseDto } from '../users/dto/user-response.dto';
 import { parseDurationMs } from '../../common/utils/duration.util';
@@ -161,7 +161,7 @@ export class AuthService {
     return { changed: true };
   }
 
-  private async issueSession(user: User, deviceInfo?: string): Promise<AuthResponseDto> {
+  private async issueSession(user: UserDocument, deviceInfo?: string): Promise<AuthResponseDto> {
     const [accessToken, refresh] = await Promise.all([
       this.signAccessToken(user.id, user.email),
       this.refreshTokens.issue(user.id, deviceInfo),

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThanOrEqual, Repository } from 'typeorm';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { AtmReport, AtmReportStatus } from './entities/atm-report.entity';
 import { cairoStartOfDay } from '../../common/utils/time.util';
 
@@ -65,7 +65,7 @@ export function summarizeReports(
 @Injectable()
 export class ReportSummaryService {
   constructor(
-    @InjectRepository(AtmReport) private readonly reports: Repository<AtmReport>,
+    @InjectModel(AtmReport.name) private readonly reportModel: Model<AtmReport>,
     private readonly config: ConfigService,
   ) {}
 
@@ -80,10 +80,10 @@ export class ReportSummaryService {
     // freshness window; covers both the status window and the today count.
     const since = freshSince.getTime() < startOfDay.getTime() ? freshSince : startOfDay;
 
-    const rows = await this.reports.find({
-      where: { atmId, createdAt: MoreThanOrEqual(since) },
-      order: { createdAt: 'DESC' },
-    });
+    const rows = await this.reportModel
+      .find({ atmId, createdAt: { $gte: since } })
+      .sort({ createdAt: -1 })
+      .exec();
 
     const summary = summarizeReports(rows, {
       now,
@@ -93,10 +93,10 @@ export class ReportSummaryService {
 
     if (!summary.reportedAt) {
       // No recent reports: still surface the last time this ATM was reported.
-      const latest = await this.reports.findOne({
-        where: { atmId },
-        order: { createdAt: 'DESC' },
-      });
+      const latest = await this.reportModel
+        .findOne({ atmId })
+        .sort({ createdAt: -1 })
+        .exec();
       if (latest) summary.reportedAt = latest.createdAt.toISOString();
     }
 

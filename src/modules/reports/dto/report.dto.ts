@@ -17,10 +17,10 @@ export class CreateReportDto {
 }
 
 export class ReportDto {
-  @ApiProperty({ format: 'uuid' })
+  @ApiProperty({ example: '507f1f77bcf86cd799439011' })
   id!: string;
 
-  @ApiProperty({ format: 'uuid' })
+  @ApiProperty({ example: '507f1f77bcf86cd799439011' })
   atmId!: string;
 
   @ApiProperty({ enum: AtmReportStatus })

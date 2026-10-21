@@ -1,23 +1,19 @@
 import { Global, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { RedisService } from '../common/redis/redis.service';
 import { RedisThrottlerStorage } from '../common/throttler/redis-throttler.storage';
 
 /**
- * TypeORM wiring: migrations-only config (synchronize is ALWAYS false),
- * plus a hook that binds the Redis throttler storage to the Redis service.
+ * Mongoose wiring: connects to MongoDB using MONGO_URI from env.
+ * Also binds the Redis throttler storage to the Redis service on init.
  */
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forRootAsync({
+    MongooseModule.forRootAsync({
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        url: config.get<string>('databaseUrl'),
-        autoLoadEntities: true,
-        synchronize: false,
-        logging: config.get<string>('nodeEnv') === 'development' ? ['warn', 'error'] : false,
+        uri: config.get<string>('mongoUri'),
       }),
       inject: [ConfigService],
     }),

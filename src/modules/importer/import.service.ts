@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
-import { DataSource } from 'typeorm';
+import mongoose, { type Connection } from 'mongoose';
 import { haversineMeters } from '../../common/utils/geo.util';
 import { AtmJsonMapper, type MapResult, type SkipReason } from './atm-json.mapper';
 import { extractRecords, rawFileSchema } from './atm-json.schema';
@@ -35,7 +35,7 @@ export interface ImportOptions {
  * reports invalid records and near-duplicates instead of failing.
  */
 export class AtmImportService {
-  constructor(private readonly dataSource: DataSource | null = null) {}
+  constructor(private readonly connection: Connection | null = null) {}
 
   async importFile(filePath: string, options: ImportOptions = {}): Promise<ImportSummary> {
     const source = options.source ?? 'google_places';
@@ -90,8 +90,8 @@ export class AtmImportService {
 
     if (dryRun) return summary;
 
-    if (!this.dataSource) {
-      throw new Error('A DataSource is required to write the import (dryRun was false)');
+    if (!this.connection) {
+      throw new Error('A Mongoose connection is required to write the import (dryRun was false)');
     }
 
     const fetchedAtValue = sourceFetchedAt.toISOString();
@@ -99,46 +99,39 @@ export class AtmImportService {
       atm.sourceFetchedAt = new Date(fetchedAtValue);
     }
 
-    await this.dataSource.transaction(async (manager) => {
-      for (const atm of valid) {
-        const rows: Array<{ inserted: boolean }> = await manager.query(
-          `INSERT INTO "atms"
-             ("name", "bank", "address", "location", "isBranch", "openingHours", "is24h",
-              "wheelchairAccessible", "source", "sourceId", "sourceFetchedAt", "searchText")
-           VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography, $6, $7, $8, $9, $10, $11, $12, $13)
-           ON CONFLICT ("source", "sourceId") DO UPDATE SET
-             "name" = EXCLUDED."name",
-             "bank" = EXCLUDED."bank",
-             "address" = EXCLUDED."address",
-             "location" = EXCLUDED."location",
-             "isBranch" = EXCLUDED."isBranch",
-             "openingHours" = EXCLUDED."openingHours",
-             "is24h" = EXCLUDED."is24h",
-             "wheelchairAccessible" = EXCLUDED."wheelchairAccessible",
-             "sourceFetchedAt" = EXCLUDED."sourceFetchedAt",
-             "searchText" = EXCLUDED."searchText",
-             "updatedAt" = now()
-           RETURNING (xmax = 0) AS inserted`,
-          [
-            atm.name,
-            atm.bank,
-            atm.address,
-            atm.lng,
-            atm.lat,
-            atm.isBranch,
-            atm.openingHours ? JSON.stringify(atm.openingHours) : null,
-            atm.is24h,
-            atm.wheelchairAccessible,
-            atm.source,
-            atm.sourceId,
-            atm.sourceFetchedAt,
-            atm.searchText,
-          ],
-        );
-        if (rows[0]?.inserted) summary.inserted += 1;
-        else summary.updated += 1;
-      }
-    });
+    const collection = this.connection.collection('atms');
+    const bulkOps = valid.map((atm) => ({
+      updateOne: {
+        filter: { source: atm.source, sourceId: atm.sourceId },
+        update: {
+          $set: {
+            name: atm.name,
+            bank: atm.bank,
+            address: atm.address,
+            location: { type: 'Point', coordinates: [atm.lng, atm.lat] },
+            isBranch: atm.isBranch,
+            openingHours: atm.openingHours ?? null,
+            is24h: atm.is24h,
+            wheelchairAccessible: atm.wheelchairAccessible,
+            sourceFetchedAt: atm.sourceFetchedAt,
+            searchText: atm.searchText,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            createdAt: new Date(),
+          },
+        },
+        upsert: true,
+      },
+    }));
+
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < bulkOps.length; i += BATCH_SIZE) {
+      const batch = bulkOps.slice(i, i + BATCH_SIZE);
+      const result = await collection.bulkWrite(batch);
+      summary.inserted += result.upsertedCount;
+      summary.updated += result.modifiedCount;
+    }
 
     return summary;
   }

@@ -6,9 +6,7 @@ import { z } from 'zod';
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z
-    .string()
-    .default('postgres://aqrab:aqrab@localhost:5432/aqrab'),
+  MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
   JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required'),

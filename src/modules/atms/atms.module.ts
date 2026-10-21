@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Atm } from './entities/atm.entity';
-import { AtmReport } from './entities/atm-report.entity';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Atm, AtmSchema } from './entities/atm.entity';
+import { AtmReport, AtmReportSchema } from './entities/atm-report.entity';
 import { AtmsController } from './atms.controller';
 import { AtmsService } from './atms.service';
 import { AtmsRepository } from './atms.repository';
@@ -10,7 +10,13 @@ import { ReportSummaryService } from './report-summary.service';
 import { SearchModule } from '../search/search.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Atm, AtmReport]), SearchModule],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Atm.name, schema: AtmSchema },
+      { name: AtmReport.name, schema: AtmReportSchema },
+    ]),
+    SearchModule,
+  ],
   controllers: [AtmsController],
   providers: [AtmsService, AtmsRepository, OpenNowService, ReportSummaryService],
   exports: [AtmsService, AtmsRepository, OpenNowService, ReportSummaryService],
