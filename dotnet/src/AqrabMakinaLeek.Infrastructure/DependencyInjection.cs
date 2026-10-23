@@ -2,6 +2,7 @@ using AqrabMakinaLeek.Application.Common.Interfaces;
 using AqrabMakinaLeek.Infrastructure.Caching;
 using AqrabMakinaLeek.Infrastructure.Persistence;
 using AqrabMakinaLeek.Infrastructure.Persistence.Repositories;
+using AqrabMakinaLeek.Infrastructure.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
@@ -50,6 +51,11 @@ public static class DependencyInjection
         {
             services.AddSingleton<ICacheService, InMemoryCacheService>();
         }
+
+        // 3. Security (Argon2 & JWT)
+        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         return services;
     }
