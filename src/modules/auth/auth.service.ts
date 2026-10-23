@@ -83,13 +83,28 @@ export class AuthService {
 
     const result = await this.otp.request(this.users.normalizeEmail(email));
     if (result.sent && result.code) {
+      const ttlMinutes = Math.round((this.config.get<number>('otp.ttlSeconds') ?? 600) / 60);
       await this.mail.send({
         to: user.email,
-        subject: 'Aqrab Makina Leek password reset code',
+        subject: 'Aqrab Makina Leek — Password Reset Code',
         text:
           `Your password reset code is ${result.code}. ` +
-          `It expires in ${Math.round((this.config.get<number>('otp.ttlSeconds') ?? 600) / 60)} minutes. ` +
-          'If you did not request this, ignore this message.',
+          `It expires in ${ttlMinutes} minutes. ` +
+          'If you did not request this, please ignore this message.',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #0f172a; text-align: center; margin-bottom: 8px;">Aqrab Makina Leek</h2>
+            <p style="text-align: center; color: #64748b; margin-top: 0;">أقرب ماكينة ليك — إعادة تعيين كلمة المرور</p>
+            <p style="color: #334155; font-size: 15px;">Hello <strong>${user.name}</strong>,</p>
+            <p style="color: #334155; font-size: 15px;">You requested a password reset. Use the following 6-digit verification code to complete the process:</p>
+            <div style="background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 18px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #0284c7; margin: 24px 0;">
+              ${result.code}
+            </div>
+            <p style="color: #64748b; font-size: 14px;">This code is valid for <strong>${ttlMinutes} minutes</strong>. Do not share this code with anyone.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+            <p style="color: #94a3b8; font-size: 12px; margin: 0;">If you did not request a password reset, you can safely ignore this email.</p>
+          </div>
+        `,
       });
     }
     return { sent: true };

@@ -40,6 +40,9 @@ export const envSchema = z.object({
   ROUTING_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
 
   IMPORT_DEFAULT_FILE: z.string().default('data/atms.json'),
+
+  RESEND_API_KEY: z.string().optional().default(''),
+  RESEND_FROM: z.string().optional().default('Aqrab Makina Leek <onboarding@resend.dev>'),
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV === 'production') {
     if (env.JWT_ACCESS_SECRET.length < 32) {
