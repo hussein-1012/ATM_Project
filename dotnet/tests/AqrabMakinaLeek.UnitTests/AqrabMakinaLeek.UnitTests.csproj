@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\AqrabMakinaLeek.Domain\AqrabMakinaLeek.Domain.csproj" />
     <ProjectReference Include="..\..\src\AqrabMakinaLeek.Application\AqrabMakinaLeek.Application.csproj" />
     <ProjectReference Include="..\..\src\AqrabMakinaLeek.Infrastructure\AqrabMakinaLeek.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\AqrabMakinaLeek.Importer\AqrabMakinaLeek.Importer.csproj" />
   </ItemGroup>
 
 </Project>
