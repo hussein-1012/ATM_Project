@@ -3,6 +3,7 @@ using AqrabMakinaLeek.Infrastructure.Caching;
 using AqrabMakinaLeek.Infrastructure.Email;
 using AqrabMakinaLeek.Infrastructure.Persistence;
 using AqrabMakinaLeek.Infrastructure.Persistence.Repositories;
+using AqrabMakinaLeek.Infrastructure.Routing;
 using AqrabMakinaLeek.Infrastructure.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,6 +70,22 @@ public static class DependencyInjection
         {
             services.AddSingleton<IEmailService, ConsoleEmailService>();
         }
+
+        // 5. Routing Providers
+        services.Configure<RoutingOptions>(configuration.GetSection(RoutingOptions.SectionName));
+        services.AddSingleton<FallbackRoutingProvider>();
+        services.AddHttpClient<OsrmRoutingProvider>();
+        services.AddHttpClient<OrsRoutingProvider>();
+        services.AddTransient<IRoutingProvider>(sp =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<RoutingOptions>>().Value;
+            return options.Provider.ToLowerInvariant() switch
+            {
+                "osrm" => sp.GetRequiredService<OsrmRoutingProvider>(),
+                "ors" => sp.GetRequiredService<OrsRoutingProvider>(),
+                _ => sp.GetRequiredService<FallbackRoutingProvider>()
+            };
+        });
 
         return services;
     }
