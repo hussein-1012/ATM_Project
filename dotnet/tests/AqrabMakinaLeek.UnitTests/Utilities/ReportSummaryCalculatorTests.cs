@@ -45,7 +45,7 @@ public class ReportSummaryCalculatorTests
         var reports = new List<AtmReport>
         {
             MakeReport(AtmReportStatus.WORKING, _now.AddHours(-1)),
-            MakeReport(AtmReportStatus.EMPTY_CASH, _now.AddHours(-5))
+            MakeReport(AtmReportStatus.OUT_OF_CASH, _now.AddHours(-5))
         };
 
         var result = ReportSummaryCalculator.Summarize(reports, _now, FreshHours, _startOfDay);
@@ -59,7 +59,7 @@ public class ReportSummaryCalculatorTests
         var reports = new List<AtmReport>
         {
             MakeReport(AtmReportStatus.WORKING, _now.AddHours(-3)),
-            MakeReport(AtmReportStatus.EMPTY_CASH, _now.AddHours(-3))
+            MakeReport(AtmReportStatus.OUT_OF_CASH, _now.AddHours(-3))
         };
 
         var result = ReportSummaryCalculator.Summarize(reports, _now, FreshHours, _startOfDay);
