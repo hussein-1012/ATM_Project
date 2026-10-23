@@ -1,5 +1,6 @@
 using AqrabMakinaLeek.Application.Common.Interfaces;
 using AqrabMakinaLeek.Infrastructure.Caching;
+using AqrabMakinaLeek.Infrastructure.Email;
 using AqrabMakinaLeek.Infrastructure.Persistence;
 using AqrabMakinaLeek.Infrastructure.Persistence.Repositories;
 using AqrabMakinaLeek.Infrastructure.Security;
@@ -56,6 +57,18 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        // 4. Email (Resend with Console fallback)
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        var resendApiKey = configuration.GetSection(EmailOptions.SectionName).GetValue<string>("ApiKey");
+        if (!string.IsNullOrWhiteSpace(resendApiKey))
+        {
+            services.AddHttpClient<IEmailService, ResendEmailService>();
+        }
+        else
+        {
+            services.AddSingleton<IEmailService, ConsoleEmailService>();
+        }
 
         return services;
     }
