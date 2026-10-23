@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
-import mongoose, { type Connection } from 'mongoose';
+import type { Connection } from 'mongoose';
 import { haversineMeters } from '../../common/utils/geo.util';
 import { AtmJsonMapper, type MapResult, type SkipReason } from './atm-json.mapper';
 import { extractRecords, rawFileSchema } from './atm-json.schema';

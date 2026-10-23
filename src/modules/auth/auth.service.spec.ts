@@ -3,12 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import type { MailMessage, MailService } from './mail.service';
-import { TravelMode, User } from '../users/entities/user.entity';
+import { TravelMode, User, type UserDocument } from '../users/entities/user.entity';
 import type { UsersService } from '../users/users.service';
 import type { OtpService } from './otp.service';
 import type { RefreshTokenService } from './refresh-token.service';
 
-function makeUser(overrides: Partial<User> = {}): User {
+function makeUser(overrides: Partial<User> = {}): UserDocument {
   return {
     id: 'user-1',
     name: 'Ahmed Ali',
@@ -20,7 +20,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     createdAt: new Date('2026-01-01T00:00:00Z'),
     deletedAt: null,
     ...overrides,
-  } as User;
+  } as unknown as UserDocument;
 }
 
 async function captureError(promise: Promise<unknown>): Promise<HttpException> {
@@ -56,7 +56,7 @@ describe('AuthService', () => {
       findById: jest.fn(),
       getByIdOrFail: jest.fn(),
       create: jest.fn(),
-      toDto: jest.fn((user: User) => ({ id: user.id, email: user.email }) as never),
+      toDto: jest.fn((user: UserDocument) => ({ id: user.id, email: user.email }) as never),
       verifyPassword: jest.fn(),
       changePassword: jest.fn(),
       normalizeEmail: jest.fn((email: string) => email.trim().toLowerCase()),

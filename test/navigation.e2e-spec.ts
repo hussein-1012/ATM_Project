@@ -1,23 +1,25 @@
 import { INestApplication } from '@nestjs/common';
+import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { Model } from 'mongoose';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
+import { Atm } from '../src/modules/atms/entities/atm.entity';
 import { OsrmRoutingProvider } from '../src/modules/navigation/routing/osrm.provider';
 
 /**
  * Phase 6 acceptance: the routing endpoint with the provider mocked, and the
  * straight-line fallback path when the provider fails.
  *
- * Requires the docker-compose postgres + redis (and an imported ATM). This spec
+ * Requires MongoDB + Redis (and an imported ATM). This spec
  * lives alongside auth.e2e-spec.ts and is run by `pnpm test:e2e`.
  */
 describe('Navigation (e2e)', () => {
   let app: INestApplication;
   let server: unknown;
-  let dataSource: DataSource;
+  let atmModel: Model<Atm>;
   let atmId: string;
 
   const providerRoute = jest.fn();
@@ -39,11 +41,9 @@ describe('Navigation (e2e)', () => {
     await app.init();
 
     server = app.getHttpServer();
-    dataSource = app.get(DataSource);
-    const rows: Array<{ id: string }> = await dataSource.query(
-      'SELECT id FROM atms ORDER BY id LIMIT 1',
-    );
-    atmId = rows[0]?.id;
+    atmModel = app.get<Model<Atm>>(getModelToken(Atm.name));
+    const firstAtm = await atmModel.findOne().exec();
+    atmId = firstAtm?._id.toString() ?? '';
   });
 
   afterAll(async () => {
