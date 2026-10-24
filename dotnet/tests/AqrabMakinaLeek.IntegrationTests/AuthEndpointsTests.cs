@@ -22,35 +22,35 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         var email = $"test_{Guid.NewGuid():N}@example.com";
         var password = "SecurePassword123!";
 
-        // 1. Register (Name, Email, Password)
+        // 1. Register (Name, Email, Password) -> Returns UserResponseDto
         var registerReq = new RegisterRequest("Ahmed Ali", email, password);
         var regResponse = await _client.PostAsJsonAsync("/v1/auth/register", registerReq);
 
         Assert.Equal(HttpStatusCode.Created, regResponse.StatusCode);
-        var authRes = await regResponse.Content.ReadFromJsonAsync<AuthResponseDto>();
-        Assert.NotNull(authRes);
-        Assert.False(string.IsNullOrEmpty(authRes.AccessToken));
-        Assert.False(string.IsNullOrEmpty(authRes.RefreshToken));
-        Assert.Equal(email, authRes.User.Email);
-        Assert.Equal("Ahmed Ali", authRes.User.Name);
+        var registeredUser = await regResponse.Content.ReadFromJsonAsync<UserResponseDto>();
+        Assert.NotNull(registeredUser);
+        Assert.Equal(email, registeredUser.Email);
+        Assert.Equal("Ahmed Ali", registeredUser.Name);
 
-        // 2. Register Duplicate Email -> 409
+        // 2. Register Duplicate Email -> 409 Conflict with EMAIL_TAKEN
         var dupResponse = await _client.PostAsJsonAsync("/v1/auth/register", registerReq);
         Assert.Equal(HttpStatusCode.Conflict, dupResponse.StatusCode);
         var errContent = await dupResponse.Content.ReadAsStringAsync();
         using var errDoc = JsonDocument.Parse(errContent);
-        Assert.Equal("EMAIL_ALREADY_REGISTERED", errDoc.RootElement.GetProperty("code").GetString());
+        Assert.Equal("EMAIL_TAKEN", errDoc.RootElement.GetProperty("code").GetString());
 
         // 3. Login with Wrong Password -> 401
         var wrongLogin = await _client.PostAsJsonAsync("/v1/auth/login", new LoginRequest(email, "WrongPassword!"));
         Assert.Equal(HttpStatusCode.Unauthorized, wrongLogin.StatusCode);
 
-        // 4. Login with Correct Password -> 200
+        // 4. Login with Correct Password -> 200 OK with tokens
         var loginResponse = await _client.PostAsJsonAsync("/v1/auth/login", new LoginRequest(email, password));
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
         var loginAuth = await loginResponse.Content.ReadFromJsonAsync<AuthResponseDto>();
         Assert.NotNull(loginAuth);
         Assert.False(string.IsNullOrEmpty(loginAuth.AccessToken));
+        Assert.False(string.IsNullOrEmpty(loginAuth.RefreshToken));
+        Assert.Equal(email, loginAuth.User.Email);
 
         // 5. Get Profile /v1/auth/me without token -> 401
         var unauthMe = await _client.GetAsync("/v1/auth/me");

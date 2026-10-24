@@ -26,7 +26,7 @@ public class HealthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         Assert.Equal("ok", doc.RootElement.GetProperty("status").GetString());
-        Assert.Equal("AqrabMakinaLeek API", doc.RootElement.GetProperty("service").GetString());
+        Assert.True(doc.RootElement.TryGetProperty("timestamp", out _));
     }
 
     [Fact]

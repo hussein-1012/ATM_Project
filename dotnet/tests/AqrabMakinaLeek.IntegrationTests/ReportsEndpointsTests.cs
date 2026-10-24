@@ -20,10 +20,13 @@ public class ReportsEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task PostReport_Succeeds_And_SubsequentReportWithinWindow_Returns429Cooldown()
     {
-        // 1. Register a reporting user to get token
+        // 1. Register a reporting user and login to get token
         var email = $"reporter_{Guid.NewGuid():N}@example.com";
-        var regResponse = await _client.PostAsJsonAsync("/v1/auth/register", new RegisterRequest("Reporter", email, "Password123!"));
-        var authRes = await regResponse.Content.ReadFromJsonAsync<AuthResponseDto>();
+        var password = "Password123!";
+        await _client.PostAsJsonAsync("/v1/auth/register", new RegisterRequest("Reporter", email, password));
+
+        var loginRes = await _client.PostAsJsonAsync("/v1/auth/login", new LoginRequest(email, password));
+        var authRes = await loginRes.Content.ReadFromJsonAsync<AuthResponseDto>();
         Assert.NotNull(authRes);
 
         var token = authRes.AccessToken;

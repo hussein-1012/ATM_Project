@@ -18,10 +18,13 @@ public class FavoritesAndSearchesEndpointsTests : IClassFixture<CustomWebApplica
     [Fact]
     public async Task Favorites_And_RecentSearches_Flow_WorksCorrectly()
     {
-        // 1. Register a test user
+        // 1. Register a test user and login to get token
         var email = $"fav_{Guid.NewGuid():N}@example.com";
-        var regResponse = await _client.PostAsJsonAsync("/v1/auth/register", new RegisterRequest("Fav User", email, "Password123!"));
-        var authRes = await regResponse.Content.ReadFromJsonAsync<AuthResponseDto>();
+        var password = "Password123!";
+        await _client.PostAsJsonAsync("/v1/auth/register", new RegisterRequest("Fav User", email, password));
+
+        var loginRes = await _client.PostAsJsonAsync("/v1/auth/login", new LoginRequest(email, password));
+        var authRes = await loginRes.Content.ReadFromJsonAsync<AuthResponseDto>();
         Assert.NotNull(authRes);
 
         var token = authRes.AccessToken;

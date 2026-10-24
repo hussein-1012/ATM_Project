@@ -1,7 +1,9 @@
+using System.Text.Json.Serialization;
 using AqrabMakinaLeek.Domain.Enums;
 
 namespace AqrabMakinaLeek.Application.Common.Models;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum Maneuver
 {
     DEPART,
