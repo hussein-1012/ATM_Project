@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsEnum, IsOptional, IsString, Length } from 'class-validator';
 import { TravelMode } from '../entities/user.entity';
 
@@ -27,13 +27,20 @@ export class UpdateProfileDto {
 }
 
 export class ChangePasswordDto {
-  @ApiPropertyOptional({ example: 'old-secret-1', description: 'Current password' })
+  @ApiProperty({ example: 'old-secret-1', description: 'Current password' })
   @IsString()
   @Length(8, 128)
   currentPassword!: string;
 
-  @ApiPropertyOptional({ example: 'new-secret-1', description: 'New password (min 8 chars)' })
+  @ApiProperty({ example: 'new-secret-1', description: 'New password (min 8 chars)' })
   @IsString()
   @Length(8, 128)
   newPassword!: string;
+}
+
+export class DeleteAccountDto {
+  @ApiProperty({ example: 'current-secret-1', description: 'Current password for confirmation' })
+  @IsString()
+  @Length(1, 128)
+  password!: string;
 }

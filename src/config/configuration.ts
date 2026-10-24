@@ -47,4 +47,8 @@ export default () => ({
     timeoutMs: parseInt(process.env.ROUTING_TIMEOUT_MS ?? '5000', 10),
   },
   importDefaultFile: process.env.IMPORT_DEFAULT_FILE ?? 'data/atms.json',
+  resend: {
+    apiKey: process.env.RESEND_API_KEY ?? '',
+    from: process.env.RESEND_FROM ?? 'Aqrab Makina Leek <onboarding@resend.dev>',
+  },
 });

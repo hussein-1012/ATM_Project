@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { normalizeArabic } from '../../common/utils/arabic-normalize.util';
 import type { AtmBank } from './entities/atm-bank.enum';
 import { Atm, type AtmDocument, type OpeningHours } from './entities/atm.entity';
 
@@ -100,33 +101,10 @@ export class AtmsRepository {
 
   async findById(id: string, ref?: { lat: number; lng: number }): Promise<AtmRow | null> {
     if (ref) {
-      const results = await this.atmModel.aggregate<AtmDocument & { distanceMeters: number }>([
-        { $match: { _id: this.objectId(id) } },
-        {
-          $addFields: {
-            distanceMeters: {
-              $let: {
-                vars: {
-                  refPoint: { type: 'Point', coordinates: [ref.lng, ref.lat] },
-                },
-                in: {
-                  $function: {
-                    body: 'function() { return null; }',
-                    args: [],
-                    lang: 'js',
-                  },
-                },
-              },
-            },
-          },
-        },
-      ]);
-      // Fallback: lookup without aggregation distance, compute with geoNear if needed
       const doc = await this.atmModel.findById(id).exec();
       if (!doc) return null;
 
-      // Use a separate geoNear query for distance
-      const distResults = await this.atmModel.aggregate([
+      const distResults = await this.atmModel.aggregate<{ distanceMeters: number }>([
         {
           $geoNear: {
             near: { type: 'Point', coordinates: [ref.lng, ref.lat] },
@@ -256,15 +234,11 @@ export class AtmsRepository {
   }
 
   private escapeRegex(q: string): string {
-    // Import the normalizer lazily to avoid circular deps
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { normalizeArabic } = require('../../common/utils/arabic-normalize.util');
     const normalized: string = normalizeArabic(q);
     return normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private objectId(id: string) {
-    const { Types } = require('mongoose');
     return new Types.ObjectId(id);
   }
 }

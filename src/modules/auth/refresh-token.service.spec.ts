@@ -1,8 +1,7 @@
-import { randomUUID } from 'node:crypto';
 import { HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
-import { RefreshToken, type RefreshTokenDocument } from './entities/refresh-token.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { RefreshTokenService } from './refresh-token.service';
 
 /** In-memory Mongoose Model<RefreshToken> supporting the methods the service uses. */

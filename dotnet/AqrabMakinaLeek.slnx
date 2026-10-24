@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AqrabMakinaLeek.Application/AqrabMakinaLeek.Application.csproj" />
+    <Project Path="src/AqrabMakinaLeek.Domain/AqrabMakinaLeek.Domain.csproj" />
+    <Project Path="src/AqrabMakinaLeek.Importer/AqrabMakinaLeek.Importer.csproj" />
+    <Project Path="src/AqrabMakinaLeek.Infrastructure/AqrabMakinaLeek.Infrastructure.csproj" />
+    <Project Path="src/AqrabMakinaLeek.WebApi/AqrabMakinaLeek.WebApi.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AqrabMakinaLeek.IntegrationTests/AqrabMakinaLeek.IntegrationTests.csproj" />
+    <Project Path="tests/AqrabMakinaLeek.UnitTests/AqrabMakinaLeek.UnitTests.csproj" />
+  </Folder>
+</Solution>

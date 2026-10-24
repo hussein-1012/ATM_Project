@@ -23,8 +23,7 @@ class InMemorySearchModel {
   }
 
   find(filter: Record<string, unknown> = {}) {
-    const self = this;
-    let result = self.rows.filter((row) => {
+    let result = this.rows.filter((row) => {
       if (filter.userId && row.userId.toString() !== filter.userId.toString()) return false;
       return true;
     });
@@ -45,7 +44,7 @@ class InMemorySearchModel {
     };
   }
 
-  async deleteMany(filter: Record<string, unknown>) {
+  async deleteMany(filter: any) {
     const before = this.rows.length;
     if (filter._id?.$in) {
       const ids = new Set((filter._id.$in as Types.ObjectId[]).map((id) => id.toString()));

@@ -31,7 +31,7 @@ export class RefreshToken {
   @Prop({ type: Date, default: null })
   revokedAt!: Date | null;
 
-  @Prop({ maxlength: 255, default: null })
+  @Prop({ type: String, maxlength: 255, default: null })
   deviceInfo!: string | null;
 
   createdAt!: Date;

@@ -1,23 +1,27 @@
 import { INestApplication } from '@nestjs/common';
+import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { Model } from 'mongoose';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { MAIL_SERVICE, MailMessage } from '../src/modules/auth/mail.service';
+import { RefreshToken } from '../src/modules/auth/entities/refresh-token.entity';
+import { User } from '../src/modules/users/entities/user.entity';
 
 /**
  * Phase 3 acceptance: register / login / refresh (+ reuse detection) / logout,
  * the full OTP forgot → verify → reset flow, and all OTP limits.
  *
- * Requires the docker-compose postgres + redis. Throttling is disabled here
+ * Requires MongoDB + Redis. Throttling is disabled here
  * (it has its own unit coverage) so a single suite can hammer the auth routes.
  */
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   let server: unknown;
-  let dataSource: DataSource;
+  let userModel: Model<User>;
+  let refreshTokenModel: Model<RefreshToken>;
 
   const sentMails: MailMessage[] = [];
   const userIds: string[] = [];
@@ -73,13 +77,14 @@ describe('Auth (e2e)', () => {
     await app.init();
 
     server = app.getHttpServer();
-    dataSource = app.get(DataSource);
+    userModel = app.get<Model<User>>(getModelToken(User.name));
+    refreshTokenModel = app.get<Model<RefreshToken>>(getModelToken(RefreshToken.name));
   });
 
   afterAll(async () => {
     if (userIds.length) {
-      await dataSource.query('DELETE FROM refresh_tokens WHERE "userId" = ANY($1)', [userIds]);
-      await dataSource.query('DELETE FROM users WHERE id = ANY($1)', [userIds]);
+      await refreshTokenModel.deleteMany({ userId: { $in: userIds } });
+      await userModel.deleteMany({ _id: { $in: userIds } });
     }
     await app.close();
   });

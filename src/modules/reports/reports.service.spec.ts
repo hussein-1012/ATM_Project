@@ -1,6 +1,6 @@
 import { HttpException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { AtmReport, AtmReportStatus } from '../atms/entities/atm-report.entity';
 import { ReportsService } from './reports.service';
 import type { AtmsService } from '../atms/atms.service';
