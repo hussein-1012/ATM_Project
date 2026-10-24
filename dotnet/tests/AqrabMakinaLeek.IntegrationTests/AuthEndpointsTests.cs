@@ -27,10 +27,10 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         var regResponse = await _client.PostAsJsonAsync("/v1/auth/register", registerReq);
 
         Assert.Equal(HttpStatusCode.Created, regResponse.StatusCode);
-        var registeredUser = await regResponse.Content.ReadFromJsonAsync<UserResponseDto>();
-        Assert.NotNull(registeredUser);
-        Assert.Equal(email, registeredUser.Email);
-        Assert.Equal("Ahmed Ali", registeredUser.Name);
+        var regContent = await regResponse.Content.ReadAsStringAsync();
+        using var regDoc = JsonDocument.Parse(regContent);
+        Assert.Equal(email, regDoc.RootElement.GetProperty("user").GetProperty("email").GetString());
+        Assert.Equal("Ahmed Ali", regDoc.RootElement.GetProperty("user").GetProperty("name").GetString());
 
         // 2. Register Duplicate Email -> 409 Conflict with EMAIL_TAKEN
         var dupResponse = await _client.PostAsJsonAsync("/v1/auth/register", registerReq);
@@ -76,7 +76,7 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal("Ahmed Mohamed Ali", updatedUser.Name);
 
         // 8. Change Password -> 200
-        using var changePassReq = new HttpRequestMessage(HttpMethod.Post, "/v1/auth/me/change-password");
+        using var changePassReq = new HttpRequestMessage(HttpMethod.Post, "/v1/auth/change-password");
         changePassReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginAuth.AccessToken);
         changePassReq.Content = JsonContent.Create(new ChangePasswordRequest(password, "NewSecurePassword456!"));
         var changePassResponse = await _client.SendAsync(changePassReq);
