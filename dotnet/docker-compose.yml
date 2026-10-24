@@ -1,0 +1,59 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aqrab_makina_leek_api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      - Mongo__ConnectionString=mongodb://mongodb:27017
+      - Mongo__DatabaseName=aqrab_makina_leek
+      - Redis__ConnectionString=redis:6379
+      - Jwt__AccessSecret=super-secure-production-access-token-secret-key-32-chars!
+      - Jwt__ResetSecret=super-secure-production-reset-token-secret-key-32-chars!
+      - Resend__ApiKey=re_dummy_resend_api_key_for_docker
+      - Resend__FromEmail=onboarding@resend.dev
+      - Routing__Provider=Fallback
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mongodb:
+    image: mongo:7.0
+    container_name: aqrab_makina_leek_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: aqrab_makina_leek_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  mongo_data:
+  redis_data:
