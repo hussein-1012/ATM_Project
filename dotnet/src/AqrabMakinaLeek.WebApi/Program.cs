@@ -9,7 +9,53 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
+// ── Load .env file (root of repo, two levels up from WebApi) ─────────────────
+// ASP.NET Core does not read .env automatically; we do it here so that all
+// Resend__ApiKey, Mongo__ConnectionString, etc. from .env are available as
+// environment variables to the configuration system.
+static void LoadDotEnv()
+{
+    // Walk up from the assembly location to find the repo root .env
+    var dir = AppContext.BaseDirectory;
+    string? envPath = null;
+    for (var i = 0; i < 8; i++)
+    {
+        var candidate = Path.Combine(dir, ".env");
+        if (File.Exists(candidate)) { envPath = candidate; break; }
+        var parent = Directory.GetParent(dir);
+        if (parent is null) break;
+        dir = parent.FullName;
+    }
+
+    if (envPath is null) return;
+
+    foreach (var raw in File.ReadAllLines(envPath))
+    {
+        var line = raw.Trim();
+        // Skip blanks and comments
+        if (string.IsNullOrEmpty(line) || line.StartsWith('#')) continue;
+
+        var idx = line.IndexOf('=');
+        if (idx <= 0) continue;
+
+        var key   = line[..idx].Trim();
+        var value = line[(idx + 1)..].Trim();
+
+        // Only set if not already set by the OS environment (OS wins)
+        if (Environment.GetEnvironmentVariable(key) is null)
+        {
+            Environment.SetEnvironmentVariable(key, value);
+        }
+    }
+}
+
+LoadDotEnv();
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Re-add environment variables after loading .env so ASP.NET configuration
+// picks up the newly set variables (they are now OS-level env vars).
+builder.Configuration.AddEnvironmentVariables();
 
 // 1. Clean Architecture Layers
 builder.Services.AddApplication();
@@ -98,7 +144,7 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseCors();
 
-// Mount Swagger at /docs to match Node.js documentation path
+// Mount Swagger at /docs
 app.UseSwagger(c =>
 {
     c.RouteTemplate = "docs/{documentName}/swagger.json";
@@ -114,7 +160,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Initialize MongoDB indices if database is configured
+// Initialize MongoDB indices (non-fatal; app runs even if this fails)
 try
 {
     using var scope = app.Services.CreateScope();

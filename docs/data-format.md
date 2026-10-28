@@ -1,7 +1,7 @@
 # Data format — `data/atms.json`
 
 The API is **source-agnostic**: the importer reads a JSON file describing ATMs
-(or bank branches that host ATMs) and upserts them into PostGIS. The file that
+(or bank branches that host ATMs) and upserts them into MongoDB. The file that
 ships with this repository is a Google Places crawler export; any file matching
 the format below works, and the file may be replaced at any time.
 
@@ -27,8 +27,8 @@ file's modified time is used.
 | Field                | Type                          | Required | Mapping |
 |----------------------|-------------------------------|----------|---------|
 | `title`              | string                        | yes      | `Atm.name` (trimmed). Empty ⇒ skipped `EMPTY_NAME`. |
-| `location.lat`       | number                        | yes      | `Atm.location` latitude (SRID 4326). |
-| `location.lng`       | number                        | yes      | `Atm.location` longitude (SRID 4326). |
+| `location.lat`       | number                        | yes      | `Atm.location` latitude (GeoJSON coordinates). |
+| `location.lng`       | number                        | yes      | `Atm.location` longitude (GeoJSON coordinates). |
 | `address`            | string \| null                | no       | `Atm.address`; falls back to `street, neighborhood, city, state`. |
 | `street`, `neighborhood`, `city`, `state` | string \| null | no | Fallback address parts. |
 | `categories`         | string[]                      | no       | Kept only when it contains `ATM` or a bank category (see below). |
@@ -87,7 +87,7 @@ Google's per-day strings are parsed into 24-hour `HH:MM` intervals:
 - `Atm.sourceId` = `placeId` when present, otherwise a deterministic
   `sha256(normalizedName | lat(5dp) | lng(5dp))` prefixed with `gen_`.
 - The upsert key is `(source, sourceId)`, so re-running the import is
-  idempotent: existing rows are updated, new rows are inserted, nothing is
+  idempotent: existing documents are updated, new documents are inserted, nothing is
   deleted.
 - Same-bank records within ~15 m of each other are reported as near-duplicates
   (they are **not** deleted).

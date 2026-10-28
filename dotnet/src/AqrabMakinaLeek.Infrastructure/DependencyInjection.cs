@@ -59,12 +59,14 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
-        // 4. Email (Resend with Console fallback)
-        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
-        var resendApiKey = configuration.GetSection(EmailOptions.SectionName).GetValue<string>("ApiKey");
-        if (!string.IsNullOrWhiteSpace(resendApiKey))
+        // 4. Email — Sendliberty (uses Gmail OAuth relay, no domain setup required)
+        //    Docs: https://sendliberty.com/docs  |  Endpoint: POST https://sendliberty.com/api/send
+        //    Falls back to ConsoleEmailService when the API key is absent (useful in Testing env).
+        services.Configure<SendlibertyOptions>(configuration.GetSection(SendlibertyOptions.SectionName));
+        var sendlibertyKey = configuration.GetSection(SendlibertyOptions.SectionName).GetValue<string>("ApiKey");
+        if (!string.IsNullOrWhiteSpace(sendlibertyKey))
         {
-            services.AddHttpClient<IEmailService, ResendEmailService>();
+            services.AddHttpClient<IEmailService, SendlibertyEmailService>();
         }
         else
         {

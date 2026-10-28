@@ -1,25 +1,22 @@
-# Dependencies / build
-node_modules/
-dist/
-coverage/
+# ── Frontend ──────────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
 
-# Env & logs
-.env
-.env.local
-*.log
-npm-debug.log*
-
-# IDE / OS
-.vscode/
-.idea/
-.DS_Store
-
-# Test artifacts
-test/.tmp/
-
-# .NET
+# ── .NET Backend ──────────────────────────────────────────────────────────────
 **/bin/
 **/obj/
 *.user
 *.suo
 .vs/
+
+# ── Environment & Secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+*.log
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

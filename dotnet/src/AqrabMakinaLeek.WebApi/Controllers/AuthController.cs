@@ -65,13 +65,4 @@ public class AuthController : ControllerBase
         await _authService.ResetPasswordAsync(request.ResetToken, request.NewPassword, ct);
         return Ok(new { reset = true });
     }
-
-    [Authorize]
-    [HttpPost("change-password")]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
-    {
-        var userId = User.GetRequiredUserId();
-        await _authService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword, ct);
-        return Ok(new { changed = true });
-    }
 }

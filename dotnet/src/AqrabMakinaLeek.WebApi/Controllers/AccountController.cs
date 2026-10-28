@@ -8,7 +8,7 @@ namespace AqrabMakinaLeek.WebApi.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("v1/auth/me")]
+[Route("v1/me")]
 public class AccountController : ControllerBase
 {
     private readonly AccountService _accountService;

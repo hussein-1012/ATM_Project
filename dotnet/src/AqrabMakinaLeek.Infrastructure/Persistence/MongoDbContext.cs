@@ -12,7 +12,11 @@ public class MongoDbContext
     {
         MongoClassMapper.Register();
 
-        var client = new MongoClient(options.Value.ConnectionString);
+        var settings = MongoClientSettings.FromConnectionString(options.Value.ConnectionString);
+        settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
+        settings.ConnectTimeout = TimeSpan.FromSeconds(5);
+
+        var client = new MongoClient(settings);
         _database = client.GetDatabase(options.Value.DatabaseName);
     }
 

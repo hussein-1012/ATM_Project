@@ -4,6 +4,7 @@ using AqrabMakinaLeek.Application.Common.Interfaces;
 using AqrabMakinaLeek.Application.DTOs;
 using AqrabMakinaLeek.Domain.Entities;
 using AqrabMakinaLeek.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace AqrabMakinaLeek.Application.Services;
 
@@ -15,6 +16,7 @@ public class AuthService
     private readonly IPasswordHasher _hasher;
     private readonly IJwtTokenGenerator _jwtGenerator;
     private readonly IEmailService _mailService;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IUserRepository userRepo,
@@ -22,7 +24,8 @@ public class AuthService
         OtpService otp,
         IPasswordHasher hasher,
         IJwtTokenGenerator jwtGenerator,
-        IEmailService mailService)
+        IEmailService mailService,
+        ILogger<AuthService> logger)
     {
         _userRepo = userRepo;
         _refreshTokens = refreshTokens;
@@ -30,6 +33,7 @@ public class AuthService
         _hasher = hasher;
         _jwtGenerator = jwtGenerator;
         _mailService = mailService;
+        _logger = logger;
     }
 
     public async Task<UserResponseDto> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
@@ -97,27 +101,81 @@ public class AuthService
         var (sent, code) = await _otp.RequestAsync(user.Email, ct);
         if (sent && code is not null)
         {
-            var html = $@"
-              <div style=""font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;"">
-                <h2 style=""color: #0f172a; text-align: center; margin-bottom: 8px;"">Aqrab Makina Leek</h2>
-                <p style=""text-align: center; color: #64748b; margin-top: 0;"">أقرب ماكينة ليك — إعادة تعيين كلمة المرور</p>
-                <p style=""color: #334155; font-size: 15px;"">Hello <strong>{user.Name}</strong>,</p>
-                <p style=""color: #334155; font-size: 15px;"">You requested a password reset. Use the following 6-digit verification code to complete the process:</p>
-                <div style=""background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 18px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #0284c7; margin: 24px 0;"">
-                  {code}
-                </div>
-                <p style=""color: #64748b; font-size: 14px;"">This code is valid for <strong>10 minutes</strong>. Do not share this code with anyone.</p>
-                <hr style=""border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;"" />
-                <p style=""color: #94a3b8; font-size: 12px; margin: 0;"">If you did not request a password reset, you can safely ignore this email.</p>
-              </div>";
+            var html = $@"<!DOCTYPE html>
+<html lang='ar' dir='ltr'>
+<head>
+  <meta charset='UTF-8' />
+  <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+  <title>Aqrab Makina Leek — Password Reset Code</title>
+</head>
+<body style='margin:0;padding:0;background-color:#0f172a;font-family:Segoe UI,Arial,sans-serif;'>
+  <table role='presentation' cellspacing='0' cellpadding='0' border='0' width='100%' style='background:#0f172a;padding:40px 16px;'>
+    <tr>
+      <td align='center'>
+        <table role='presentation' cellspacing='0' cellpadding='0' border='0' width='100%' style='max-width:560px;background:#1e293b;border-radius:16px;overflow:hidden;border:1px solid #334155;'>
+          <tr>
+            <td style='background:linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%);padding:32px 40px;text-align:center;'>
+              <p style='margin:0;font-size:13px;color:rgba(255,255,255,0.7);letter-spacing:2px;text-transform:uppercase;'>أقرب ماكينة ليك</p>
+              <h1 style='margin:8px 0 0;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;'>Aqrab Makina Leek</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style='padding:36px 40px 28px;'>
+              <p style='margin:0 0 8px;font-size:15px;color:#94a3b8;'>Hello {user.Name},</p>
+              <h2 style='margin:0 0 20px;font-size:20px;font-weight:700;color:#f1f5f9;'>Your Password Reset Code</h2>
+              <p style='margin:0 0 28px;font-size:15px;line-height:1.6;color:#94a3b8;'>
+                We received a request to reset the password for <strong style='color:#e2e8f0;'>{user.Email}</strong>.
+                Use the 6-digit code below to complete the process.
+              </p>
+              <table role='presentation' cellspacing='0' cellpadding='0' border='0' width='100%' style='margin-bottom:28px;'>
+                <tr>
+                  <td align='center' style='background:#0f172a;border:2px dashed #0ea5e9;border-radius:12px;padding:24px 16px;'>
+                    <p style='margin:0 0 8px;font-size:12px;color:#64748b;letter-spacing:1px;text-transform:uppercase;'>Verification Code</p>
+                    <p style='margin:0;font-size:42px;font-weight:900;letter-spacing:14px;color:#38bdf8;font-family:Courier New,monospace;'>{code}</p>
+                  </td>
+                </tr>
+              </table>
+              <table role='presentation' cellspacing='0' cellpadding='0' border='0' width='100%' style='margin-bottom:28px;'>
+                <tr>
+                  <td style='background:#1c2a3a;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:14px 18px;'>
+                    <p style='margin:0;font-size:14px;color:#fbbf24;'>&#9201; This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
+                  </td>
+                </tr>
+              </table>
+              <p style='margin:0;font-size:14px;line-height:1.6;color:#64748b;'>
+                If you did not request a password reset, you can safely ignore this email.
+                Your account remains secure and no changes have been made.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style='background:#0f172a;padding:20px 40px;border-top:1px solid #1e293b;'>
+              <p style='margin:0;font-size:12px;color:#475569;text-align:center;'>&#169; 2026 Aqrab Makina Leek &#8212; &#1571;&#1602;&#1585;&#1576; &#1605;&#1575;&#1603;&#1610;&#1606;&#1577; &#1604;&#1610;&#1603; | Fayoum, Egypt</p>
+              <p style='margin:6px 0 0;font-size:11px;color:#334155;text-align:center;'>This is an automated security email. Please do not reply.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>";
 
-            await _mailService.SendAsync(
-                new EmailMessage(
-                    user.Email,
-                    "Aqrab Makina Leek — Password Reset Code",
-                    $"Your password reset code is {code}. It expires in 10 minutes. If you did not request this, please ignore this message.",
-                    html),
-                ct);
+            try
+            {
+                await _mailService.SendAsync(
+                    new EmailMessage(
+                        user.Email,
+                        "Aqrab Makina Leek — Your Password Reset Code",
+                        $"Your Aqrab Makina Leek password reset code expires in 10 minutes. If you did not request this, please ignore this message.",
+                        html),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                // Email delivery failure is non-fatal. OTP is still valid in cache.
+                _logger.LogError(ex, "Failed to send OTP email to {Email} — OTP is still valid in cache", user.Email);
+            }
         }
 
         return true;
