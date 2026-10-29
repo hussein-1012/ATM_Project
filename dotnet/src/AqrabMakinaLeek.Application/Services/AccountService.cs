@@ -93,4 +93,29 @@ public class AccountService
 
         return true;
     }
+
+    public async Task<bool> ChangePasswordAsync(
+        string userId,
+        string currentPassword,
+        string newPassword,
+        CancellationToken ct = default)
+    {
+        var user = await _userRepo.GetByIdAsync(userId, ct);
+        if (user is null)
+        {
+            throw new NotFoundException("User not found", "USER_NOT_FOUND");
+        }
+
+        if (!_hasher.Verify(user.PasswordHash, currentPassword))
+        {
+            throw new UnauthorizedException("Current password is incorrect", "INVALID_CURRENT_PASSWORD");
+        }
+
+        user.PasswordHash = _hasher.Hash(newPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepo.UpdateAsync(user, ct);
+
+        await _refreshTokens.RevokeAllForUserAsync(user.Id, ct);
+        return true;
+    }
 }

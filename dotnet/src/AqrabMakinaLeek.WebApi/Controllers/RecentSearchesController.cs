@@ -8,7 +8,7 @@ namespace AqrabMakinaLeek.WebApi.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("v1/settings/recent-searches")]
+[Route("v1/me/recent-searches")]
 public class RecentSearchesController : ControllerBase
 {
     private readonly RecentSearchesService _searchesService;

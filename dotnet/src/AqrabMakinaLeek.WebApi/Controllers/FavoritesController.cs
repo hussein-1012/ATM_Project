@@ -8,7 +8,7 @@ namespace AqrabMakinaLeek.WebApi.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("v1/favorites")]
+[Route("v1/me/favorites")]
 public class FavoritesController : ControllerBase
 {
     private readonly FavoritesService _favoritesService;
@@ -29,6 +29,8 @@ public class FavoritesController : ControllerBase
         return Ok(favorites);
     }
 
+    // Frontend uses PUT; accept both PUT and POST for compatibility
+    [HttpPut("{atmId}")]
     [HttpPost("{atmId}")]
     public async Task<ActionResult<AddFavoriteResponseDto>> Add(
         [FromRoute] string atmId,

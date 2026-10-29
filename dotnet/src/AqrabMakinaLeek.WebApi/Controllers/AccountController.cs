@@ -41,4 +41,12 @@ public class AccountController : ControllerBase
         await _accountService.DeleteAccountAsync(userId, request.Password, ct);
         return Ok(new { deleted = true });
     }
+
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
+    {
+        var userId = User.GetRequiredUserId();
+        await _accountService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword, ct);
+        return Ok(new { changed = true });
+    }
 }

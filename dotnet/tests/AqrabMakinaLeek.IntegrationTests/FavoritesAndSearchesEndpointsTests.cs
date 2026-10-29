@@ -30,8 +30,8 @@ public class FavoritesAndSearchesEndpointsTests : IClassFixture<CustomWebApplica
         var token = authRes.AccessToken;
         var atmId = "60c72b2f9b1d8b001c8e4d1a";
 
-        // 2. Add Favorite /v1/favorites/{atmId}
-        using var addFavReq = new HttpRequestMessage(HttpMethod.Post, $"/v1/favorites/{atmId}");
+        // 2. Add Favorite PUT /v1/me/favorites/{atmId}
+        using var addFavReq = new HttpRequestMessage(HttpMethod.Put, $"/v1/me/favorites/{atmId}");
         addFavReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var addFavRes = await _client.SendAsync(addFavReq);
         Assert.Equal(HttpStatusCode.Created, addFavRes.StatusCode);
@@ -39,8 +39,8 @@ public class FavoritesAndSearchesEndpointsTests : IClassFixture<CustomWebApplica
         Assert.NotNull(addedFav);
         Assert.Equal(atmId, addedFav.AtmId);
 
-        // 3. Get Favorites /v1/favorites
-        using var getFavReq = new HttpRequestMessage(HttpMethod.Get, "/v1/favorites");
+        // 3. Get Favorites GET /v1/me/favorites
+        using var getFavReq = new HttpRequestMessage(HttpMethod.Get, "/v1/me/favorites");
         getFavReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var getFavRes = await _client.SendAsync(getFavReq);
         Assert.Equal(HttpStatusCode.OK, getFavRes.StatusCode);
@@ -50,14 +50,14 @@ public class FavoritesAndSearchesEndpointsTests : IClassFixture<CustomWebApplica
         Assert.Single(favList.Items);
         Assert.Equal(atmId, favList.Items[0].Id);
 
-        // 4. Remove Favorite /v1/favorites/{atmId}
-        using var delFavReq = new HttpRequestMessage(HttpMethod.Delete, $"/v1/favorites/{atmId}");
+        // 4. Remove Favorite DELETE /v1/me/favorites/{atmId}
+        using var delFavReq = new HttpRequestMessage(HttpMethod.Delete, $"/v1/me/favorites/{atmId}");
         delFavReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var delFavRes = await _client.SendAsync(delFavReq);
         Assert.Equal(HttpStatusCode.NoContent, delFavRes.StatusCode);
 
-        // 5. Add Recent Search /v1/settings/recent-searches
-        using var addSearchReq = new HttpRequestMessage(HttpMethod.Post, "/v1/settings/recent-searches");
+        // 5. Add Recent Search POST /v1/me/recent-searches
+        using var addSearchReq = new HttpRequestMessage(HttpMethod.Post, "/v1/me/recent-searches");
         addSearchReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         addSearchReq.Content = JsonContent.Create(new CreateRecentSearchRequest("بنك مصر الفيوم"));
         var addSearchRes = await _client.SendAsync(addSearchReq);
@@ -66,8 +66,8 @@ public class FavoritesAndSearchesEndpointsTests : IClassFixture<CustomWebApplica
         Assert.NotNull(searchItem);
         Assert.Equal("بنك مصر الفيوم", searchItem.Query);
 
-        // 6. Get Recent Searches
-        using var getSearchesReq = new HttpRequestMessage(HttpMethod.Get, "/v1/settings/recent-searches");
+        // 6. Get Recent Searches GET /v1/me/recent-searches
+        using var getSearchesReq = new HttpRequestMessage(HttpMethod.Get, "/v1/me/recent-searches");
         getSearchesReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var getSearchesRes = await _client.SendAsync(getSearchesReq);
         Assert.Equal(HttpStatusCode.OK, getSearchesRes.StatusCode);
@@ -75,8 +75,8 @@ public class FavoritesAndSearchesEndpointsTests : IClassFixture<CustomWebApplica
         Assert.NotNull(searchList);
         Assert.NotEmpty(searchList.Items);
 
-        // 7. Clear Recent Searches
-        using var clearSearchesReq = new HttpRequestMessage(HttpMethod.Delete, "/v1/settings/recent-searches");
+        // 7. Clear Recent Searches DELETE /v1/me/recent-searches
+        using var clearSearchesReq = new HttpRequestMessage(HttpMethod.Delete, "/v1/me/recent-searches");
         clearSearchesReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var clearSearchesRes = await _client.SendAsync(clearSearchesReq);
         Assert.Equal(HttpStatusCode.NoContent, clearSearchesRes.StatusCode);

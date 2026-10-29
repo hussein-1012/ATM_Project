@@ -52,12 +52,12 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.False(string.IsNullOrEmpty(loginAuth.RefreshToken));
         Assert.Equal(email, loginAuth.User.Email);
 
-        // 5. Get Profile /v1/auth/me without token -> 401
-        var unauthMe = await _client.GetAsync("/v1/auth/me");
+        // 5. Get Profile /v1/me without token -> 401
+        var unauthMe = await _client.GetAsync("/v1/me");
         Assert.Equal(HttpStatusCode.Unauthorized, unauthMe.StatusCode);
 
-        // 6. Get Profile /v1/auth/me with Bearer token -> 200
-        using var authedReq = new HttpRequestMessage(HttpMethod.Get, "/v1/auth/me");
+        // 6. Get Profile /v1/me with Bearer token -> 200
+        using var authedReq = new HttpRequestMessage(HttpMethod.Get, "/v1/me");
         authedReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginAuth.AccessToken);
         var meResponse = await _client.SendAsync(authedReq);
         Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
@@ -65,8 +65,8 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.NotNull(userDto);
         Assert.Equal(email, userDto.Email);
 
-        // 7. Update Profile /v1/auth/me -> 200
-        using var updateReq = new HttpRequestMessage(HttpMethod.Patch, "/v1/auth/me");
+        // 7. Update Profile /v1/me -> 200
+        using var updateReq = new HttpRequestMessage(HttpMethod.Patch, "/v1/me");
         updateReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginAuth.AccessToken);
         updateReq.Content = JsonContent.Create(new UpdateProfileDto(Name: "Ahmed Mohamed Ali"));
         var updateResponse = await _client.SendAsync(updateReq);
@@ -75,8 +75,8 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.NotNull(updatedUser);
         Assert.Equal("Ahmed Mohamed Ali", updatedUser.Name);
 
-        // 8. Change Password -> 200
-        using var changePassReq = new HttpRequestMessage(HttpMethod.Post, "/v1/auth/change-password");
+        // 8. Change Password /v1/me/change-password -> 200
+        using var changePassReq = new HttpRequestMessage(HttpMethod.Post, "/v1/me/change-password");
         changePassReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginAuth.AccessToken);
         changePassReq.Content = JsonContent.Create(new ChangePasswordRequest(password, "NewSecurePassword456!"));
         var changePassResponse = await _client.SendAsync(changePassReq);
